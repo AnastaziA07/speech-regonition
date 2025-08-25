@@ -1,0 +1,104 @@
+// เมื่อเริ่มต้น
+basic.showIcon(IconNames.Heart)
+basic.pause(1000)
+basic.showString("Ready", 100)  // เพิ่มความเร็วในการแสดง
+
+// ตัวแปรเก็บข้อความ
+let receivedText = ""
+let isConnected = false
+let isDisplaying = false
+
+// ฟังก์ชันแสดงสถานะการเชื่อมต่อ
+function showConnectionStatus() {
+    if (isConnected) {
+        basic.showIcon(IconNames.Yes)
+    } else {
+        basic.showIcon(IconNames.No)
+    }
+    basic.pause(1000)
+    basic.clearScreen()
+}
+
+// ฟังก์ชันแสดงข้อความแบบปลอดภัย
+function displayText(text: string) {
+    if (isDisplaying) return  // ป้องกันการขัดกัน
+
+    isDisplaying = true
+    basic.clearScreen()
+
+    // กรองและทำความสะอาดข้อความ
+    let cleanText = ""
+    for (let i = 0; i < text.length; i++) {
+        let char = text.charAt(i)
+        // รับได้เฉพาะตัวอักษรที่แสดงได้บน micro:bit
+        if (char >= 'A' && char <= 'Z' ||
+            char >= 'a' && char <= 'z' ||
+            char >= '0' && char <= '9' ||
+            char == ' ') {
+            cleanText += char
+        }
+    }
+
+    // ถ้าไม่มีตัวอักษรที่แสดงได้ แสดงจำนวนตัวอักษรแทน
+    if (cleanText.length == 0) {
+        basic.showString("Length:" + text.length, 80)
+    } else {
+        basic.showString(cleanText, 80)  // ความเร็วปานกลาง
+    }
+
+    basic.pause(500)
+    basic.clearScreen()
+    isDisplaying = false
+}
+
+// เมื่อกด A: ส่งสัญญาณพร้อมฟัง
+input.onButtonPressed(Button.A, function () {
+    basic.showIcon(IconNames.Skull)  // ไอคอนไมค์
+    serial.writeLine("READY_TO_LISTEN")
+    basic.pause(500)
+    basic.clearScreen()
+})
+
+// เมื่อกด B: แสดงข้อความล่าสุด
+input.onButtonPressed(Button.B, function () {
+    if (receivedText.length > 0) {
+        displayText(receivedText)
+    } else {
+        basic.showString("No text", 100)
+    }
+})
+
+// เมื่อกด A+B: แสดงสถานะการเชื่อมต่อ
+input.onButtonPressed(Button.AB, function () {
+    showConnectionStatus()
+})
+
+// ลูปหลักรับข้อมูลจาก Serial
+basic.forever(function () {
+    let serialData = serial.readLine()
+    if (serialData.length > 0) {
+        isConnected = true
+
+        if (serialData.indexOf("TEXT:") >= 0) {
+            // ตัดคำว่า "TEXT:" ออก
+            receivedText = serialData.substr(5)
+
+            // แสดงไอคอนสำเร็จก่อน
+            basic.showIcon(IconNames.Yes)
+            basic.pause(800)
+
+            // แสดงข้อความ
+            displayText(receivedText)
+
+        } else if (serialData == "CONNECTED") {
+            basic.showIcon(IconNames.Yes)
+            basic.pause(1000)
+            basic.clearScreen()
+        } else if (serialData == "ERROR") {
+            basic.showIcon(IconNames.Sad)
+            basic.pause(2000)
+            basic.clearScreen()
+        }
+    }
+    basic.pause(50)  // ลดเวลา pause เพื่อการตอบสนองที่ดีขึ้น
+})
