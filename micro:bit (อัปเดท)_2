@@ -1,0 +1,83 @@
+// เมื่อเริ่มต้น
+basic.showIcon(IconNames.Heart)
+basic.pause(1000)
+basic.showString("Cal Ready", 80)
+
+// ตัวแปร
+let receivedText = ""
+let isConnected = false
+let isDisplaying = false
+let commandMode = ""
+
+// ฟังก์ชันแสดงสถานะ
+function showStatus(status: string) {
+    if (isDisplaying) return
+    isDisplaying = true
+    
+    if (status == "CALENDAR") {
+        basic.showIcon(IconNames.Square)
+        basic.pause(500)
+        basic.showString("CAL", 100)
+    } else if (status == "SUCCESS") {
+        basic.showIcon(IconNames.Yes)
+        basic.pause(1000)
+        basic.showString("SAVED", 100)
+    } else if (status == "ERROR") {
+        basic.showIcon(IconNames.No)
+        basic.pause(1000)
+        basic.showString("FAIL", 100)
+    }
+    
+    basic.pause(1000)
+    basic.clearScreen()
+    isDisplaying = false
+}
+
+// ปุ่ม A: สั่งงาน Calendar
+input.onButtonPressed(Button.A, function () {
+    commandMode = "CALENDAR"
+    basic.showIcon(IconNames.Target)
+    serial.writeLine("CALENDAR_COMMAND")
+    basic.pause(500)
+    basic.clearScreen()
+})
+
+// ปุ่ม B: สั่งงานทั่วไป
+input.onButtonPressed(Button.B, function () {
+    commandMode = "GENERAL"
+    basic.showIcon(IconNames.Skull)
+    serial.writeLine("GENERAL_COMMAND")
+    basic.pause(500)
+    basic.clearScreen()
+})
+
+// A+B: แสดงข้อความล่าสุด
+input.onButtonPressed(Button.AB, function () {
+    if (receivedText.length > 0) {
+        basic.showString(receivedText, 80)
+    } else {
+        basic.showString("No data", 100)
+    }
+})
+
+// รับข้อมูลจาก Serial
+basic.forever(function () {
+    let serialData = serial.readLine()
+    if (serialData.length > 0) {
+        isConnected = true
+        
+        if (serialData.indexOf("CALENDAR_SUCCESS") >= 0) {
+            showStatus("SUCCESS")
+        } else if (serialData.indexOf("CALENDAR_ERROR") >= 0) {
+            showStatus("ERROR")
+        } else if (serialData.indexOf("TEXT:") >= 0) {
+            receivedText = serialData.substr(5)
+            basic.showString(receivedText, 80)
+        } else if (serialData == "CONNECTED") {
+            basic.showIcon(IconNames.Yes)
+            basic.pause(1000)
+            basic.clearScreen()
+        }
+    }
+    basic.pause(50)
+})
