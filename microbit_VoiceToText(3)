@@ -1,0 +1,178 @@
+// เมื่อเริ่มต้น
+basic.showIcon(IconNames.Heart)
+basic.pause(1000)
+basic.showString("Voice Cal Ready", 80)
+
+// ตัวแปร
+let receivedText = ""
+let isConnected = false
+let isDisplaying = false
+let commandMode = ""
+
+// ฟังก์ชันแสดงสถานะ Calendar
+function showStatus(status: string) {
+    if (isDisplaying) return
+    isDisplaying = true
+
+    if (status == "CALENDAR") {
+        basic.showIcon(IconNames.Square)
+        basic.pause(500)
+        basic.showString("CAL", 100)
+    } else if (status == "SUCCESS") {
+        basic.showIcon(IconNames.Yes)
+        basic.pause(1000)
+        basic.showString("SAVED", 100)
+    } else if (status == "ERROR") {
+        basic.showIcon(IconNames.No)
+        basic.pause(1000)
+        basic.showString("FAIL", 100)
+    } else if (status == "LISTENING") {
+        basic.showIcon(IconNames.Skull)
+        basic.pause(500)
+        basic.showString("LISTENING", 100)
+    }
+
+    basic.pause(1000)
+    basic.clearScreen()
+    isDisplaying = false
+}
+
+// ฟังก์ชันแสดงข้อความแบบปลอดภัย (รองรับภาษาไทย)
+function displayText(text: string) {
+    if (isDisplaying) return
+
+    isDisplaying = true
+    basic.clearScreen()
+
+    // กรองและทำความสะอาดข้อความ (รองรับภาษาไทยมากขึ้น)
+    let cleanText = ""
+    for (let i = 0; i < text.length; i++) {
+        let char = text.charAt(i)
+        // รับได้ตัวอักษรที่แสดงได้บน micro:bit
+        if (char >= 'A' && char <= 'Z' ||
+            char >= 'a' && char <= 'z' ||
+            char >= '0' && char <= '9' ||
+            char == ' ' || char == ':' || char == '-' || char == '/') {
+            cleanText += char
+        }
+    }
+
+    // ถ้าไม่มีตัวอักษรที่แสดงได้ แสดงจำนวนตัวอักษรแทน
+    if (cleanText.length == 0) {
+        basic.showString("Thai:" + text.length + " chars", 80)
+    } else {
+        basic.showString(cleanText, 80)
+    }
+
+    basic.pause(500)
+    basic.clearScreen()
+    isDisplaying = false
+}
+
+// ฟังก์ชันแสดงสถานะการเชื่อมต่อ
+function showConnectionStatus() {
+    if (isConnected) {
+        basic.showIcon(IconNames.Yes)
+        basic.pause(500)
+        basic.showString("CONNECTED", 100)
+    } else {
+        basic.showIcon(IconNames.No)
+        basic.pause(500)
+        basic.showString("NO CONNECT", 100)
+    }
+    basic.pause(1000)
+    basic.clearScreen()
+}
+
+// ปุ่ม A: เริ่มฟังเสียงเพื่อสร้าง Calendar
+input.onButtonPressed(Button.A, function () {
+    commandMode = "VOICE_TO_CALENDAR"
+    showStatus("LISTENING")
+    serial.writeLine("START_VOICE_CALENDAR")
+    basic.pause(500)
+    basic.clearScreen()
+})
+
+// ปุ่ม B: แสดงข้อความล่าสุดที่ได้รับ
+input.onButtonPressed(Button.B, function () {
+    if (receivedText.length > 0) {
+        displayText("Last: " + receivedText)
+    } else {
+        basic.showString("No text", 100)
+    }
+})
+
+// A+B: แสดงสถานะการเชื่อมต่อ
+input.onButtonPressed(Button.AB, function () {
+    showConnectionStatus()
+})
+
+// เขย่า micro:bit: ยกเลิกการทำงาน
+input.onGesture(Gesture.Shake, function () {
+    commandMode = ""
+    basic.showIcon(IconNames.Skull)
+    serial.writeLine("CANCEL")
+    basic.pause(1000)
+    basic.clearScreen()
+})
+
+// ลูปหลักรับข้อมูลจาก Serial
+basic.forever(function () {
+    let serialData = serial.readLine()
+    if (serialData.length > 0) {
+        isConnected = true
+
+        // รับข้อความที่แปลงจากเสียง
+        if (serialData.indexOf("VOICE_TEXT:") >= 0) {
+            receivedText = serialData.substr(11)
+
+            // แสดงไอคอนรับข้อความสำเร็จ
+            basic.showIcon(IconNames.Yes)
+            basic.pause(800)
+
+            // แสดงข้อความที่ได้รับ
+            displayText("Voice: " + receivedText)
+
+            // ผลลัพธ์การสร้าง Calendar
+        } else if (serialData.indexOf("CALENDAR_SUCCESS") >= 0) {
+            showStatus("SUCCESS")
+
+        } else if (serialData.indexOf("CALENDAR_ERROR") >= 0) {
+            showStatus("ERROR")
+
+            // ข้อความทั่วไป
+        } else if (serialData.indexOf("TEXT:") >= 0) {
+            receivedText = serialData.substr(5)
+            displayText(receivedText)
+
+            // สถานะการเชื่อมต่อ
+        } else if (serialData == "CONNECTED") {
+            basic.showIcon(IconNames.Yes)
+            basic.pause(1000)
+            basic.clearScreen()
+
+        } else if (serialData == "ERROR" || serialData == "VOICE_ERROR") {
+            basic.showIcon(IconNames.Sad)
+            basic.pause(2000)
+            basic.clearScreen()
+
+            // สถานะพิเศษ
+        } else if (serialData == "PROCESSING") {
+            basic.showIcon(IconNames.Giraffe)
+            basic.pause(500)
+            basic.showString("PROCESSING", 100)
+            basic.clearScreen()
+        }
+    }
+    basic.pause(50)
+})
+
+// แสดงหัวใจทุก ๆ 30 วินาที เมื่อไม่มีการทำงาน
+basic.forever(function () {
+    if (!isDisplaying && commandMode == "") {
+        basic.showIcon(IconNames.SmallHeart)
+        basic.pause(500)
+        basic.clearScreen()
+    }
+    basic.pause(30000)
+})
