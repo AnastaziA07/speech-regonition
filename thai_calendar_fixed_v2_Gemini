@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Thai Voice Calendar Assistant (HTTPS Fixed)</title>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://apis.google.com https://accounts.google.com;">
+    <style>
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .calendar-section {
+            background: rgba(74, 144, 226, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #4a90e2;
+        }
+        .microbit-section {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+        .calendar-btn {
+            background: linear-gradient(45deg, #4a90e2, #357abd);
+        }
+        .connect-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        }
+        .status-connected {
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #result {
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            min-height: 80px;
+            font-size: 20px;
+            line-height: 1.5;
+        }
+        .parsed-command {
+            background: rgba(74, 144, 226, 0.2);
+            color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4a90e2;
+        }
+        #status, #microbitStatus, #calendarStatus {
+            text-align: center;
+            font-size: 18px;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+        }
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .instruction {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        .log {
+            background: rgba(0,0,0,0.3);
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .command-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .example-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #4a90e2;
+        }
+        .auth-setup {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 2px solid #28a745;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 2px solid #dc3545;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .debug-section {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00ff00;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .https-warning {
+            background: rgba(220, 53, 69, 0.3);
+            border: 2px solid #dc3545;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Thai Voice Calendar Assistant (HTTPS Fixed)</h1>
+        
+        <div id="httpsWarning" class="https-warning" style="display: none;">
+            <h3>⚠️ ต้องใช้ HTTPS เพื่อให้ Google API ทำงาน</h3>
+            <p><strong>วิธีแก้ไข:</strong></p>
+            <p>1. เปิดเว็บไซต์นี้ด้วย HTTPS (เปลี่ยน http:// เป็น https://)</p>
+            <p>2. หรือใช้ localhost development server ที่รองรับ HTTPS</p>
+            <p>3. หรือใช้เครื่องมือเช่น ngrok สำหรับการทดสอบ</p>
+        </div>
+        
+        <div class="debug-section">
+            <h4>🔍 Debug Information</h4>
+            <div id="debugInfo">กำลังตรวจสอบ browser compatibility...</div>
+        </div>
+        
+        <div class="calendar-section">
+            <h3>📅 Google Calendar Setup</h3>
+            
+            <div class="auth-setup">
+                <h4>⚠️ ก่อนเริ่มใช้งาน - ต้องตั้งค่า Google API</h4>
+                <p>1. ไปที่ <a href="https://console.cloud.google.com/" target="_blank" style="color: #ffc107;">Google Cloud Console</a></p>
+                <p>2. สร้างโปรเจ็คใหม่หรือเลือกโปรเจ็คที่มีอยู่</p>
+                <p>3. เปิดใช้ Google Calendar API</p>
+                <p>4. สร้าง OAuth 2.0 Credentials (Web application)</p>
+                <p><strong>5. เพิ่ม Authorized origins:</strong></p>
+                <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    <p>• <code>https://localhost:8000</code> (สำหรับ localhost)</p>
+                    <p>• <code>https://yourdomain.com</code> (domain ของคุณ)</p>
+                    <p>• <code>https://127.0.0.1:8000</code> (alternative localhost)</p>
+                </div>
+                <p>6. นำ CLIENT_ID มาใส่ในโค้ดด้านล่าง</p>
+            </div>
+            
+            <div class="controls">
+                <input type="text" id="clientIdInput" placeholder="ใส่ Google OAuth Client ID ของคุณ" 
+                       style="width: 60%; padding: 10px; margin: 10px; border-radius: 5px; border: none;">
+                <button id="saveClientId" class="calendar-btn">💾 บันทึก Client ID</button>
+            </div>
+            
+            <div class="controls">
+                <button id="authBtn" class="calendar-btn" disabled>🔑 เข้าสู่ระบบ Google</button>
+                <button id="signoutBtn" class="calendar-btn" disabled>🚪 ออกจากระบบ</button>
+                <button id="testApiBtn" class="calendar-btn" disabled>🔧 ทดสอบ API</button>
+            </div>
+            <div id="calendarStatus">ยังไม่ได้ตั้งค่า Google API</div>
+            
+            <div class="instruction">
+                <strong>ตัวอย่างคำสั่ง:</strong>
+                <div class="command-examples">
+                    <div class="example-card">
+                        <strong>"วันจันทร์มีนัดสอนพิเศษ เวลา 19.30 น."</strong><br>
+                        → สร้าง event วันจันทร์หน้า เวลา 19:30
+                    </div>
+                    <div class="example-card">
+                        <strong>"วันอังคารที่ 25 ประชุมทีม เวลา 14.00 น."</strong><br>
+                        → สร้าง event วันที่ 25 เวลา 14:00
+                    </div>
+                    <div class="example-card">
+                        <strong>"พรุ่งนี้เรียนพิเศษ ตั้งแต่ 9 โมงเช้า ถึง 12 โมง"</strong><br>
+                        → สร้าง event พรุ่งนี้ 09:00-12:00
+                    </div>
+                    <div class="example-card">
+                        <strong>"ลบนัดหมายวันเสาร์"</strong><br>
+                        → ค้นหาและลบ events วันเสาร์
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="microbit-section">
+            <h3>📟 การเชื่อมต่อ micro:bit</h3>
+            <div class="controls">
+                <button id="connectBtn" class="connect-btn">🔌 เชื่อมต่อ micro:bit</button>
+                <button id="disconnectBtn" class="connect-btn" disabled>⏹ ตัดการเชื่อมต่อ</button>
+            </div>
+            <div id="microbitStatus">ยังไม่เชื่อมต่อ micro:bit</div>
+            
+            <div class="instruction">
+                📋 <strong>วิธีใช้:</strong><br>
+                • <strong>ปุ่ม A</strong> บน micro:bit = สั่งงาน Calendar<br>
+                • <strong>ปุ่ม B</strong> บน micro:bit = คำสั่งทั่วไป<br>
+                • <strong>A+B</strong> = แสดงข้อความล่าสุด
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn">🎙️ เริ่มฟัง</button>
+            <button id="stopBtn" disabled>⏹️ หยุดฟัง</button>
+            <button id="executeBtn" disabled class="calendar-btn">🚀 ดำเนินการ</button>
+            <button id="clearBtn">🗑️ ล้างข้อความ</button>
+        </div>
+        
+        <div id="status">ตั้งค่า Google API และเชื่อมต่อ micro:bit ก่อน</div>
+        
+        <div id="result">คำสั่งที่รู้จำได้จะแสดงที่นี่...</div>
+        
+        <div id="parsedCommand" class="parsed-command" style="display: none;">
+            <h4>📋 คำสั่งที่แปลแล้ว:</h4>
+            <div id="commandDetails"></div>
+        </div>
+
+        <div class="instruction">
+            ⌨️ <strong>คีย์บอร์ด:</strong> Space = เริ่มฟัง | Escape = หยุดฟัง | Enter = ดำเนินการ
+        </div>
+
+        <div id="log" class="log">
+            <div>🚀 ระบบพร้อมใช้งาน...</div>
+        </div>
+    </div>
+
+    <script>
+        // ตัวแปรต่างๆ
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let recognition = null;
+        let isListening = false;
+        let isConnected = false;
+        let currentText = '';
+        let currentCommand = null;
+        let commandMode = 'GENERAL';
+        
+        // Google API
+        let isGoogleAuthorized = false;
+        let isGoogleAPILoaded = false;
+        let CLIENT_ID = '';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar';
+
+        // Elements
+        const clientIdInput = document.getElementById('clientIdInput');
+        const saveClientIdBtn = document.getElementById('saveClientId');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const authBtn = document.getElementById('authBtn');
+        const signoutBtn = document.getElementById('signoutBtn');
+        const testApiBtn = document.getElementById('testApiBtn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const executeBtn = document.getElementById('executeBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const result = document.getElementById('result');
+        const status = document.getElementById('status');
+        const microbitStatus = document.getElementById('microbitStatus');
+        const calendarStatus = document.getElementById('calendarStatus');
+        const log = document.getElementById('log');
+        const parsedCommand = document.getElementById('parsedCommand');
+        const commandDetails = document.getElementById('commandDetails');
+        const debugInfo = document.getElementById('debugInfo');
+        const httpsWarning = document.getElementById('httpsWarning');
+
+        // ฟังก์ชัน log
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString('th-TH');
+            log.innerHTML += `<div>[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // ฟังก์ชัน Debug Info
+        function updateDebugInfo() {
+            const info = [];
+            info.push(`Browser: ${navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1]}`);
+            info.push(`HTTPS: ${location.protocol === 'https:' ? '✅' : '❌'}`);
+            info.push(`Web Serial: ${'serial' in navigator ? '✅' : '❌'}`);
+            info.push(`Speech Recognition: ${('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) ? '✅' : '❌'}`);
+            info.push(`Google APIs Script: ${typeof gapi !== 'undefined' ? '✅' : '❌'}`);
+            info.push(`Client ID Set: ${CLIENT_ID ? '✅' : '❌'}`);
+            info.push(`Google API Loaded: ${isGoogleAPILoaded ? '✅' : '❌'}`);
+            info.push(`Google Authorized: ${isGoogleAuthorized ? '✅' : '❌'}`);
+            info.push(`micro:bit Connected: ${isConnected ? '✅' : '❌'}`);
+            
+            debugInfo.innerHTML = info.join('<br>');
+            
+            // แสดงคำเตือน HTTPS หากจำเป็น
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                httpsWarning.style.display = 'block';
+                authBtn.disabled = true;
+                addLog('❌ ต้องใช้ HTTPS เพื่อให้ Google OAuth API ทำงาน');
+            } else {
+                httpsWarning.style.display = 'none';
+            }
+        }
+
+        // ฟังก์ชันบันทึก Client ID
+        function saveClientId() {
+            const clientId = clientIdInput.value.trim();
+            if (!clientId) {
+                addLog('⚠️ กรุณาใส่ Google OAuth Client ID');
+                calendarStatus.innerHTML = '⚠️ กรุณาใส่ Client ID';
+                calendarStatus.className = 'warning';
+                return;
+            }
+            
+            // ตรวจสอบรูปแบบ Client ID
+            if (!clientId.includes('.apps.googleusercontent.com')) {
+                addLog('⚠️ Client ID ดูเหมือนไม่ถูกต้อง - ควรลงท้ายด้วย .apps.googleusercontent.com');
+                calendarStatus.innerHTML = '⚠️ รูปแบบ Client ID ไม่ถูกต้อง';
+                calendarStatus.className = 'warning';
+            }
+            
+            CLIENT_ID = clientId;
+            
+            // ตรวจสอบ HTTPS อีกครั้ง
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                authBtn.disabled = true;
+                calendarStatus.innerHTML = '❌ ต้องใช้ HTTPS เพื่อให้ Google API ทำงาน';
+                calendarStatus.className = 'error';
+            } else {
+                authBtn.disabled = false;
+                calendarStatus.innerHTML = 'พร้อมเข้าสู่ระบบ Google';
+                calendarStatus.className = '';
+            }
+            
+            addLog(`✅ บันทึก Client ID แล้ว: ${CLIENT_ID.substring(0, 20)}...`);
+            updateDebugInfo();
+            
+            // โหลด Google API
+            initializeGoogleAPI();
+        }
+
+        // Google API Initialization - ปรับปรุงการจัดการข้อผิดพลาด
+        async function initializeGoogleAPI() {
+            if (!CLIENT_ID) {
+                addLog('⚠️ ต้องตั้งค่า Client ID ก่อน');
+                return;
+            }
+
+            // ตรวจสอบ HTTPS
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                addLog('❌ Google OAuth จำเป็นต้องใช้ HTTPS');
+                calendarStatus.innerHTML = '❌ ต้องใช้ HTTPS';
+                calendarStatus.className = 'error';
+                return;
+            }
+
+            try {
+                addLog('🔧 กำลังโหลด Google Calendar API...');
+                
+                // ตรวจสอบว่า gapi โหลดแล้วหรือยัง
+                if (typeof gapi === 'undefined') {
+                    // พยายามโหลด Google APIs script
+                    await loadGoogleAPI();
+                }
+                
+                // รอ Google APIs โหลดเสร็จ พร้อม timeout ที่นานขึ้น
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Google APIs โหลดช้าเกินไป - ตรวจสอบการเชื่อมต่อ'));
+                    }, 30000); // 30 วินาที timeout
+                    
+                    if (typeof gapi !== 'undefined' && gapi.load) {
+                        gapi.load('client:auth2', {
+                            callback: () => {
+                                clearTimeout(timeout);
+                                resolve();
+                            },
+                            onerror: (error) => {
+                                clearTimeout(timeout);
+                                reject(new Error(`Google APIs โหลดไม่สำเร็จ: ${error}`));
+                            }
+                        });
+                    } else {
+                        // หากยังไม่มี gapi ให้รออีกเล็กน้อย
+                        let attempts = 0;
+                        const checkGapi = setInterval(() => {
+                            attempts++;
+                            if (typeof gapi !== 'undefined' && gapi.load) {
+                                clearInterval(checkGapi);
+                                gapi.load('client:auth2', {
+                                    callback: () => {
+                                        clearTimeout(timeout);
+                                        resolve();
+                                    },
+                                    onerror: (error) => {
+                                        clearTimeout(timeout);
+                                        reject(new Error(`Google APIs โหลดไม่สำเร็จ: ${error}`));
+                                    }
+                                });
+                            } else if (attempts > 60) { // 30 วินาที (500ms * 60)
+                                clearInterval(checkGapi);
+                                clearTimeout(timeout);
+                                reject(new Error('Google APIs script ไม่โหลด - ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต'));
+                            }
+                        }, 500);
+                    }
+                });
+
+                // ตั้งค่า Google Client
+                await gapi.client.init({
+                    clientId: CLIENT_ID,
+                    discoveryDocs: [DISCOVERY_DOC],
+                    scope: SCOPES
+                });
+                
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance) {
+                    throw new Error('ไม่สามารถสร้าง Auth Instance ได้ - ตรวจสอบ Client ID');
+                }
+                
+                isGoogleAuthorized = authInstance.isSignedIn.get();
+                isGoogleAPILoaded = true;
+                
+                // Listen for sign-in state changes
+                authInstance.isSignedIn.listen(updateGoogleStatus);
+                
+                updateGoogleStatus();
+                updateDebugInfo();
+                testApiBtn.disabled = false;
+                
+                addLog('✅ Google Calendar API โหลดสำเร็จ');
+                
+            } catch (error) {
+                addLog(`❌ ไม่สามารถโหลด Google API: ${error.message || error.details || error}`);
+                calendarStatus.innerHTML = '❌ โหลด Google API ไม่สำเร็จ';
+                calendarStatus.className = 'error';
+                
+                // แสดงข้อแนะนำการแก้ไข
+                if (error.message && error.message.includes('invalid_client')) {
+                    addLog('💡 Client ID ไม่ถูกต้อง - กรุณาตรวจสอบใน Google Cloud Console');
+                } else if (error.message && error.message.includes('origin_mismatch')) {
+                    addLog('💡 Domain ไม่ตรงกัน - เพิ่ม domain นี้ใน Authorized origins');
+                } else if (error.message && error.message.includes('โหลดช้า')) {
+                    addLog('💡 ลองรีเฟรชหน้าเว็บแล้วลองใหม่');
+                } else if (error.message && error.message.includes('script ไม่โหลด')) {
+                    addLog('💡 ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+                } else if (error.message && error.message.includes('HTTPS')) {
+                    addLog('💡 เปลี่ยน URL เป็น https:// หรือใช้ localhost');
+                }
+                
+                updateDebugInfo();
+            }
+        }
+
+        // ฟังก์ชันโหลด Google API script dynamically
+        async function loadGoogleAPI() {
+            return new Promise((resolve, reject) => {
+                if (typeof gapi !== 'undefined') {
+                    resolve();
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                script.async = true;
+                script.defer = true;
+                
+                script.onload = () => {
+                    addLog('✅ Google APIs script โหลดสำเร็จ');
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    addLog('❌ Google APIs script โหลดไม่สำเร็จ');
+                    reject(new Error('ไม่สามารถโหลด Google APIs script ได้'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // อัปเดทสถานะ Google
+        function updateGoogleStatus() {
+            if (!isGoogleAPILoaded) return;
+            
+            try {
+                const authInstance = gapi.auth2.getAuthInstance();
+                isGoogleAuthorized = authInstance.isSignedIn.get();
+                
+                if (isGoogleAuthorized) {
+                    const user = authInstance.currentUser.get();
+                    const profile = user.getBasicProfile();
+                    
+                    calendarStatus.innerHTML = `✅ เชื่อมต่อ Google Calendar สำเร็จ<br>ผู้ใช้: ${profile.getName()}`;
+                    calendarStatus.className = 'success';
+                    authBtn.disabled = true;
+                    signoutBtn.disabled = false;
+                    addLog(`✅ เข้าสู่ระบบ Google สำเร็จ: ${profile.getName()}`);
+                } else {
+                    calendarStatus.innerHTML = '❌ ยังไม่ได้เข้าสู่ระบบ Google';
+                    calendarStatus.className = '';
+                    authBtn.disabled = false;
+                    signoutBtn.disabled = true;
+                    executeBtn.disabled = true;
+                }
+                updateStatus();
+                updateDebugInfo();
+            } catch (error) {
+                addLog(`❌ อัปเดทสถานะ Google ไม่สำเร็จ: ${error.message}`);
+                updateDebugInfo();
+            }
+        }
+
+        // ฟังก์ชันเข้าสู่ระบบ Google
+        async function signIn() {
+            if (!isGoogleAPILoaded) {
+                addLog('❌ Google API ยังไม่พร้อม');
+                return;
+            }
+
+            try {
+                addLog('🔑 กำลังเข้าสู่ระบบ Google...');
+                const authInstance = gapi.auth2.getAuthInstance();
+                
+                await authInstance.signIn({
+                    prompt: 'select_account'
+                });
+                
+            } catch (error) {
+                addLog(`❌ เข้าสู่ระบบไม่สำเร็จ: ${error.error || error.message}`);
+                
+                if (error.error === 'popup_blocked_by_browser') {
+                    addLog('💡 กรุณาอนุญาต popup ในเบราว์เซอร์');
+                } else if (error.error === 'access_denied') {
+                    addLog('💡 ผู้ใช้ปฏิเสธการเข้าถึง');
+                } else if (error.error === 'invalid_client') {
+                    addLog('💡 Client ID ไม่ถูกต้อง');
+                }
+            }
+        }
+
+        // ฟังก์ชันออกจากระบบ Google
+        async function signOut() {
+            try {
+                const authInstance = gapi.auth2.getAuthInstance();
+                await authInstance.signOut();
+                addLog('🚪 ออกจากระบบ Google แล้ว');
+            } catch (error) {
+                addLog(`❌ ออกจากระบบไม่สำเร็จ: ${error.message}`);
+            }
+        }
+
+        // ฟังก์ชันทดสอบ API
+        async function testAPI() {
+            if (!isGoogleAuthorized) {
+                addLog('❌ ต้องเข้าสู่ระบบ Google ก่อน');
+                return;
+            }
+
+            try {
+                addLog('🧪 กำลังทดสอบ Google Calendar API...');
+                
+                const response = await gapi.client.calendar.calendarList.list();
+                const calendars = response.result.items || [];
+                
+                addLog(`✅ ทดสอบ API สำเร็จ - พบ ${calendars.length} ปฏิทิน`);
+                calendars.forEach((calendar, index) => {
+                    if (index < 3) { // แสดงแค่ 3 อันแรก
+                        addLog(`📅 ปฏิทิน: ${calendar.summary}`);
+                    }
+                });
+                
+            } catch (error) {
+                addLog(`❌ ทดสอบ API ไม่สำเร็จ: ${error.message}`);
+                
+                if (error.status === 403) {
+                    addLog('💡 ไม่มีสิทธิ์เข้าถึง - ตรวจสอบ Scope และ API Enable');
+                } else if (error.status === 401) {
+                    addLog('💡 การยืนยันตัวตนไม่ถูกต้อง - ลองเข้าสู่ระบบใหม่');
+                }
+            }
+        }
+
+        // ฟังก์ชันแปลงคำสั่งภาษาไทย - ปรับปรุงการจับ pattern
+        function parseThaiCommand(text) {
+            const command = {
+                type: 'unknown',
+                title: '',
+                date: null,
+                startTime: null,
+                endTime: null,
+                description: text
+            };
+
+            // แปลงวันในสัปดาห์
+            const dayMap = {
+                'วันจันทร์': 1, 'จันทร์': 1, 'วันจ': 1,
+                'วันอังคาร': 2, 'อังคาร': 2, 'วันอ': 2,
+                'วันพุธ': 3, 'พุธ': 3,
+                'วันพฤหัสบดี': 4, 'พฤหัสบดี': 4, 'วันพฤหัส': 4, 'พฤหัส': 4,
+                'วันศุกร์': 5, 'ศุกร์': 5,
+                'วันเสาร์': 6, 'เสาร์': 6,
+                'วันอาทิตย์': 0, 'อาทิตย์': 0,
+                'วันนี้': 'today',
+                'พรุ่งนี้': 'tomorrow',
+                'มะรืนนี้': 'dayAfterTomorrow'
+            };
+
+            // หาประเภทคำสั่ง
+            if (text.includes('ลบ') || text.includes('ยกเลิก')) {
+                command.type = 'delete';
+            } else if (text.includes('แก้ไข') || text.includes('เปลี่ยน')) {
+                command.type = 'edit';
+            } else {
+                command.type = 'create';
+            }
+
+            // หาชื่อ event - ปรับปรุง pattern matching
+            const titlePatterns = [
+                /(?:มี|มีนัด|จะ)([^เวลา]*?)(?=เวลา|ตั้งแต่|ถึง|$)/,
+                /^([^เวลา]*?)(?=เวลา|ตั้งแต่|วัน|$)/
+            ];
+            
+            for (const pattern of titlePatterns) {
+                const match = text.match(pattern);
+                if (match && match[1] && match[1].trim()) {
+                    command.title = match[1].trim();
+                    break;
+                }
+            }
+
+            // หาวัน
+            const today = new Date();
+            for (const [thaiDay, dayNum] of Object.entries(dayMap)) {
+                if (text.includes(thaiDay)) {
+                    if (dayNum === 'today') {
+                        command.date = new Date(today);
+                    } else if (dayNum === 'tomorrow') {
+                        command.date = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+                    } else if (dayNum === 'dayAfterTomorrow') {
+                        command.date = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+                    } else {
+                        // หาวันถัดไปที่ตรงกับวันในสัปดาห์
+                        const nextDate = new Date(today);
+                        const daysUntilTarget = (dayNum + 7 - today.getDay()) % 7;
+                        nextDate.setDate(today.getDate() + (daysUntilTarget || 7));
+                        command.date = nextDate;
+                    }
+                    break;
+                }
+            }
+
+            // หาเวลา - ปรับปรุง regex patterns
+            const timePatterns = [
+                /เวลา\s*(\d{1,2})\.(\d{2})\s*น\./g,
+                /เวลา\s*(\d{1,2})\s*โมง\s*(\d{2})/g,
+                /(\d{1,2})\s*โมง(?:เช้า|เย็น)?/g,
+                /ตั้งแต่\s*(\d{1,2})(?:\.(\d{2}))?\s*(?:โมง(?:เช้า)?)?/g,
+                /ถึง\s*(\d{1,2})(?:\.(\d{2}))?\s*(?:โมง)?/g
+            ];
+
+            let times = [];
+            for (const pattern of timePatterns) {
+                pattern.lastIndex = 0; // Reset regex
+                let match;
+                while ((match = pattern.exec(text)) !== null) {
+                    const hour = parseInt(match[1]);
+                    const minute = parseInt(match[2] || '0');
+                    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+                        times.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                    }
+                }
+            }
+
+            if (times.length > 0) {
+                command.startTime = times[0];
+                if (times.length > 1) {
+                    command.endTime = times[1];
+                }
+            }
+
+            // ถ้าไม่มีวัน ใช้วันนี้
+            if (!command.date) {
+                command.date = new Date(today);
+            }
+
+            // ถ้าไม่มีเวลา ใช้ 09:00
+            if (!command.startTime) {
+                command.startTime = '09:00';
+            }
+
+            // กำหนด endTime (1 ชั่วโมงหลัง start time)
+            if (command.startTime && !command.endTime) {
+                const [hour, minute] = command.startTime.split(':').map(Number);
+                const endHour = hour + 1;
+                command.endTime = `${endHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            }
+
+            return command;
+        }
+
+        // แสดงคำสั่งที่แปลแล้ว
+        function displayParsedCommand(command) {
+            const dateStr = command.date ? command.date.toLocaleDateString('th-TH', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            }) : 'ไม่ระบุ';
+
+            commandDetails.innerHTML = `
+                <strong>ประเภท:</strong> ${command.type === 'create' ? 'สร้าง Event' : command.type === 'delete' ? 'ลบ Event' : 'แก้ไข Event'}<br>
+                <strong>ชื่อ:</strong> ${command.title || 'ไม่ระบุ'}<br>
+                <strong>วันที่:</strong> ${dateStr}<br>
+                <strong>เวลาเริ่ม:</strong> ${command.startTime || 'ไม่ระบุ'}<br>
+                <strong>เวลาจบ:</strong> ${command.endTime || 'ไม่ระบุ'}<br>
+                <strong>รายละเอียด:</strong> ${command.description}
+            `;
+            
+            parsedCommand.style.display = 'block';
+            executeBtn.disabled = !isGoogleAuthorized || !command.title;
+        }
+
+        // ดำเนินการคำสั่ง Calendar
+        async function executeCalendarCommand() {
+            if (!currentCommand || !isGoogleAuthorized) return;
+
+            try {
+                addLog(`🚀 กำลังดำเนินการ: ${currentCommand.type}`);
+
+                if (currentCommand.type === 'create') {
+                    await createCalendarEvent(currentCommand);
+                    // ส่งสถานะสำเร็จไป micro:bit
+                    if (isConnected && writer) {
+                        await writer.write('CALENDAR_SUCCESS\n');
+                    }
+                } else if (currentCommand.type === 'delete') {
+                    await deleteCalendarEvent(currentCommand);
+                    if (isConnected && writer) {
+                        await writer.write('CALENDAR_SUCCESS\n');
+                    }
+                }
+
+            } catch (error) {
+                addLog(`❌ ดำเนินการไม่สำเร็จ: ${error.message}`);
+                // ส่งสถานะผิดพลาดไป micro:bit
+                if (isConnected && writer) {
+                    await writer.write('CALENDAR_ERROR\n');
+                }
+            }
+        }
+
+        // สร้าง Calendar Event
+        async function createCalendarEvent(command) {
+            const startDateTime = new Date(command.date);
+            const endDateTime = new Date(command.date);
+            
+            const [startHour, startMinute] = command.startTime.split(':').map(Number);
+            const [endHour, endMinute] = command.endTime.split(':').map(Number);
+            
+            startDateTime.setHours(startHour, startMinute, 0);
+            endDateTime.setHours(endHour, endMinute, 0);
+
+            const event = {
+                summary: command.title,
+                description: `สร้างโดย Thai Voice Assistant\n${command.description}`,
+                start: {
+                    dateTime: startDateTime.toISOString(),
+                    timeZone: 'Asia/Bangkok'
+                },
+                end: {
+                    dateTime: endDateTime.toISOString(),
+                    timeZone: 'Asia/Bangkok'
+                }
+            };
+
+            const response = await gapi.client.calendar.events.insert({
+                calendarId: 'primary',
+                resource: event
+            });
+
+            addLog(`✅ สร้าง Event สำเร็จ: "${command.title}"`);
+            status.textContent = `✅ บันทึกในปฏิทินแล้ว: "${command.title}"`;
+        }
+
+        // ลบ Calendar Event
+        async function deleteCalendarEvent(command) {
+            // ค้นหา events ในวันที่กำหนด
+            const startDate = new Date(command.date);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(command.date);
+            endDate.setHours(23, 59, 59, 999);
+
+            const response = await gapi.client.calendar.events.list({
+                calendarId: 'primary',
+                timeMin: startDate.toISOString(),
+                timeMax: endDate.toISOString(),
+                singleEvents: true,
+                orderBy: 'startTime'
+            });
+
+            const events = response.result.items || [];
+            let deletedCount = 0;
+
+            for (const event of events) {
+                if (command.title && event.summary && 
+                    event.summary.toLowerCase().includes(command.title.toLowerCase())) {
+                    await gapi.client.calendar.events.delete({
+                        calendarId: 'primary',
+                        eventId: event.id
+                    });
+                    deletedCount++;
+                }
+            }
+
+            addLog(`✅ ลบ Event สำเร็จ: ${deletedCount} รายการ`);
+            status.textContent = `✅ ลบ Event แล้ว: ${deletedCount} รายการ`;
+        }
+
+        // ฟังก์ชันอัปเดทสถานะ
+        function updateStatus() {
+            if (!isConnected && !isGoogleAuthorized) {
+                status.textContent = 'ตั้งค่า Google API และเชื่อมต่อ micro:bit ก่อน';
+            } else if (!isConnected) {
+                status.textContent = 'กดปุ่ม "เชื่อมต่อ micro:bit" ก่อน';
+            } else if (!isGoogleAuthorized) {
+                status.textContent = 'กดปุ่ม "เข้าสู่ระบบ Google" ก่อน';
+            } else {
+                status.textContent = 'พร้อมใช้งาน - กด A (Calendar) หรือ B (ทั่วไป) บน micro:bit แล้วพูด!';
+            }
+            updateDebugInfo();
+        }
+
+        // ตรวจสอบการรองรับ Web Serial API
+        if (!('serial' in navigator)) {
+            addLog('❌ เบราว์เซอร์ไม่รองรับ Web Serial API');
+            addLog('💡 กรุณาใช้ Chrome หรือ Edge เวอร์ชันใหม่');
+            connectBtn.disabled = true;
+        }
+
+        // ตรวจสอบการรองรับ Speech Recognition
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            addLog('❌ เบราว์เซอร์ไม่รองรับ Speech Recognition');
+            startBtn.disabled = true;
+        } else {
+            // สร้าง Speech Recognition
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'th-TH';
+            recognition.maxAlternatives = 1;
+
+            // Speech Recognition Events
+            recognition.onstart = () => {
+                const modeText = commandMode === 'CALENDAR' ? 'Calendar 📅' : 'ทั่วไป 💬';
+                status.innerHTML = `🎤 กำลังฟัง (โหมด: ${modeText}) - <span style="color: #ff6b6b;">พูดเลย!</span>`;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                isListening = true;
+                result.style.border = '3px solid #ff6b6b';
+                addLog(`🎤 เริ่มฟังเสียง - โหมด: ${modeText}`);
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                result.innerHTML = (finalTranscript || interimTranscript) || 'กำลังรู้จำเสียง...';
+                
+                if (finalTranscript) {
+                    currentText = finalTranscript;
+                    addLog(`✅ รู้จำได้: "${finalTranscript}"`);
+                    
+                    if (commandMode === 'CALENDAR') {
+                        // แปลงเป็นคำสั่ง Calendar
+                        currentCommand = parseThaiCommand(finalTranscript);
+                        displayParsedCommand(currentCommand);
+                        addLog(`📋 แปลคำสั่ง: ${currentCommand.type} - "${currentCommand.title}"`);
+                        
+                        // ส่งข้อความไป micro:bit
+                        if (isConnected && writer) {
+                            setTimeout(() => sendToMicrobit(), 500);
+                        }
+                    } else {
+                        // โหมดทั่วไป - ส่งไป micro:bit
+                        if (isConnected && writer) {
+                            setTimeout(() => sendToMicrobit(), 500);
+                        }
+                    }
+                }
+            };
+
+            recognition.onerror = (event) => {
+                let errorMsg = '';
+                switch(event.error) {
+                    case 'no-speech':
+                        errorMsg = '🔇 ไม่ได้ยินเสียงพูด';
+                        break;
+                    case 'audio-capture':
+                        errorMsg = '🎤 ไม่สามารถเข้าถึงไมโครโฟนได้';
+                        break;
+                    case 'not-allowed':
+                        errorMsg = '❌ ไม่อนุญาตให้ใช้ไมโครโฟน';
+                        break;
+                    case 'network':
+                        errorMsg = '🌐 เครือข่ายมีปัญหา';
+                        break;
+                    default:
+                        errorMsg = '❌ เกิดข้อผิดพลาด: ' + event.error;
+                }
+                status.textContent = errorMsg;
+                addLog(`❌ ข้อผิดพลาด Speech: ${event.error}`);
+                resetSpeechButtons();
+            };
+
+            recognition.onend = () => {
+                updateStatus();
+                addLog('⏹️ หยุดฟังเสียงแล้ว');
+                resetSpeechButtons();
+            };
+        }
+
+        // ฟังก์ชันรีเซ็ตปุ่ม Speech
+        function resetSpeechButtons() {
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            isListening = false;
+            result.style.border = 'none';
+        }
+
+        // ฟังก์ชันเชื่อมต่อ micro:bit
+        async function connectToMicrobit() {
+            try {
+                addLog('🔌 กำลังเชื่อมต่อ micro:bit...');
+                
+                // ตรวจสอบ Web Serial API
+                if (!navigator.serial) {
+                    throw new Error('เบราว์เซอร์ไม่รองรับ Web Serial API');
+                }
+                
+                port = await navigator.serial.requestPort({
+                    filters: [
+                        { usbVendorId: 0x0D28 }, // micro:bit vendor ID
+                        { usbVendorId: 0x239A }  // CircuitPython vendor ID
+                    ]
+                });
+                
+                await port.open({ 
+                    baudRate: 115200,
+                    dataBits: 8,
+                    stopBits: 1,
+                    parity: 'none'
+                });
+                
+                const textDecoder = new TextDecoderStream();
+                const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                reader = textDecoder.readable.getReader();
+                
+                const textEncoder = new TextEncoderStream();
+                const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+                
+                isConnected = true;
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                
+                microbitStatus.innerHTML = '✅ เชื่อมต่อ micro:bit สำเร็จ';
+                microbitStatus.className = 'success';
+                updateStatus();
+                
+                addLog('✅ เชื่อมต่อ micro:bit สำเร็จ');
+                
+                // ส่งสัญญาณว่าเชื่อมต่อแล้ว
+                await writer.write('CONNECTED\n');
+                
+                // เริ่มอ่านข้อมูลจาก micro:bit
+                readFromMicrobit();
+                
+            } catch (error) {
+                addLog(`❌ เชื่อมต่อไม่สำเร็จ: ${error.message}`);
+                microbitStatus.innerHTML = '❌ เชื่อมต่อไม่สำเร็จ';
+                microbitStatus.className = 'error';
+                
+                if (error.message.includes('No port selected')) {
+                    addLog('💡 กรุณาเลือก micro:bit ในหน้าต่าง popup');
+                } else if (error.message.includes('Access denied')) {
+                    addLog('💡 อาจต้องปิด MakeCode หรือโปรแกรมอื่นที่ใช้ micro:bit');
+                }
+            }
+        }
+
+        // ฟังก์ชันอ่านข้อมูลจาก micro:bit - เพิ่ม error handling
+        async function readFromMicrobit() {
+            try {
+                while (isConnected && reader) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const message = value.trim();
+                    if (message) {
+                        addLog(`📨 จาก micro:bit: ${message}`);
+                        
+                        if (message === 'START_VOICE_CALENDAR') {
+                            commandMode = 'CALENDAR';
+                            addLog('📅 เปลี่ยนเป็นโหมด Calendar');
+                            if (!isListening && recognition) {
+                                setTimeout(() => startSpeechRecognition(), 500);
+                            }
+                        } else if (message === 'GENERAL_COMMAND') {
+                            commandMode = 'GENERAL';
+                            addLog('💬 เปลี่ยนเป็นโหมดทั่วไป');
+                            if (!isListening && recognition) {
+                                setTimeout(() => startSpeechRecognition(), 500);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                if (isConnected) {
+                    addLog(`❌ ข้อผิดพลาดในการอ่าน: ${error.message}`);
+                    // พยายามเชื่อมต่อใหม่
+                    setTimeout(() => {
+                        if (isConnected) {
+                            addLog('🔄 พยายามเชื่อมต่อใหม่...');
+                            readFromMicrobit();
+                        }
+                    }, 2000);
+                }
+            }
+        }
+
+        // ฟังก์ชันส่งข้อมูลไป micro:bit
+        async function sendToMicrobit() {
+            if (!isConnected || !currentText || !writer) return;
+            
+            try {
+                let romanizedText = convertThaiToRoman(currentText);
+                
+                await writer.write(`VOICE_TEXT:${romanizedText}\n`);
+                addLog(`📤 ส่งไป micro:bit: "${romanizedText}" (จากไทย: "${currentText}")`);
+                status.textContent = `📤 ส่งแล้ว: "${romanizedText}"`;
+            } catch (error) {
+                addLog(`❌ ส่งข้อมูลไม่สำเร็จ: ${error.message}`);
+                if (writer) {
+                    try {
+                        await writer.write('VOICE_ERROR\n');
+                    } catch (e) {
+                        addLog('❌ ไม่สามารถส่งข้อความ error ได้');
+                    }
+                }
+            }
+        }
+
+        // ฟังก์ชันแปลงไทยเป็นโรมัน
+        function convertThaiToRoman(thaiText) {
+            const thaiToRoman = {
+                'ก': 'ga', 'ข': 'kha', 'ค': 'kha', 'ง': 'nga',
+                'จ': 'ja', 'ฉ': 'cha', 'ช': 'cha', 'ซ': 'sa', 'ฌ': 'cha', 'ญ': 'nya',
+                'ด': 'da', 'ต': 'ta', 'ถ': 'tha', 'ท': 'tha', 'ธ': 'tha', 'น': 'na', 'บ': 'pa',
+                'ป': 'pa', 'ผ': 'pha', 'ฝ': 'fa', 'พ': 'pha', 'ฟ': 'fa', 'ภ': 'pha', 'ม': 'ma',
+                'ย': 'ya', 'ร': 'ra', 'ล': 'la', 'ว': 'wa',
+                'ศ': 'sa', 'ษ': 'sa', 'ส': 'sa', 'ห': 'ha', 'ฬ': 'la', 'อ': 'o', 'ฮ': 'ha',
+                '๐': '0', '๑': '1', '๒': '2', '๓': '3', '๔': '4', '๕': '5', '๖': '6', '๗': '7', '๘': '8', '๙': '9',
+                'า': 'aa', 'ิ': 'i', 'ี': 'ii', 'ึ': 'ue', 'ื': 'uu', 'ุ': 'u', 'ู': 'uu',
+                'เ': 'e', 'แ': 'ae', 'โ': 'o', 'ใ': 'ai', 'ไ': 'ai',
+                'ำ': 'am', 'ั': 'a', '็': '', '์': '',
+                '่': '1', '้': '2', '๊': '3', '๋': '4',
+                'สวัสดี': 'sawasdee', 'ขอบคุณ': 'khobkhun', 'ลาก่อน': 'laagoon',
+                ' ': ' '
+            };
+
+            let result = '';
+            for (let i = 0; i < thaiText.length; i++) {
+                let char = thaiText[i];
+                if (thaiToRoman[char]) {
+                    result += thaiToRoman[char];
+                } else if (char.match(/[a-zA-Z0-9\s]/)) {
+                    result += char;
+                } else {
+                    result += '?';
+                }
+            }
+
+            if (result.length > 50) {
+                result = result.substring(0, 47) + '...';
+            }
+
+            return result || 'Thai Text';
+        }
+
+        // ฟังก์ชันเริ่ม Speech Recognition
+        function startSpeechRecognition() {
+            if (!recognition || isListening) return;
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                addLog(`❌ ไม่สามารถเริ่มฟังได้: ${error.message}`);
+                resetSpeechButtons();
+            }
+        }
+
+        // ฟังก์ชันหยุด Speech Recognition
+        function stopSpeechRecognition() {
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+        }
+
+        // ฟังก์ชันตัดการเชื่อมต่อ
+        async function disconnect() {
+            try {
+                isConnected = false;
+                
+                if (reader) {
+                    await reader.cancel();
+                    reader = null;
+                }
+                
+                if (writer) {
+                    await writer.close();
+                    writer = null;
+                }
+                
+                if (port) {
+                    await port.close();
+                    port = null;
+                }
+                
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                
+                microbitStatus.innerHTML = 'ตัดการเชื่อมต่อแล้ว';
+                microbitStatus.className = '';
+                updateStatus();
+                
+                addLog('🔌 ตัดการเชื่อมต่อแล้ว');
+                
+            } catch (error) {
+                addLog(`❌ ตัดการเชื่อมต่อไม่สำเร็จ: ${error.message}`);
+            }
+        }
+
+        // ฟังก์ชันล้างข้อความ
+        function clearText() {
+            currentText = '';
+            currentCommand = null;
+            result.innerHTML = 'คำสั่งที่รู้จำได้จะแสดงที่นี่...';
+            parsedCommand.style.display = 'none';
+            executeBtn.disabled = true;
+            addLog('🗑️ ล้างข้อความแล้ว');
+            updateStatus();
+        }
+
+        // Event Listeners
+        saveClientIdBtn.addEventListener('click', saveClientId);
+        authBtn.addEventListener('click', signIn);
+        signoutBtn.addEventListener('click', signOut);
+        testApiBtn.addEventListener('click', testAPI);
+        connectBtn.addEventListener('click', connectToMicrobit);
+        disconnectBtn.addEventListener('click', disconnect);
+        startBtn.addEventListener('click', startSpeechRecognition);
+        stopBtn.addEventListener('click', stopSpeechRecognition);
+        executeBtn.addEventListener('click', executeCalendarCommand);
+        clearBtn.addEventListener('click', clearText);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            switch(event.code) {
+                case 'Space':
+                    if (!isListening && recognition) {
+                        event.preventDefault();
+                        startSpeechRecognition();
+                    }
+                    break;
+                case 'Escape':
+                    if (isListening) {
+                        event.preventDefault();
+                        stopSpeechRecognition();
+                    }
+                    break;
+                case 'Enter':
+                    if (currentCommand && isGoogleAuthorized) {
+                        event.preventDefault();
+                        executeCalendarCommand();
+                    }
+                    break;
+            }
+        });
+
+        // เริ่มต้นระบบ
+        addLog('🚀 กำลังเริ่มต้นระบบ...');
+        
+        // ตรวจสอบ HTTPS
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            addLog('⚠️ ควรใช้ HTTPS สำหรับ Web Serial API');
+        }
+        
+        updateStatus();
+        
+        // เช็คการรองรับ APIs - เพิ่ม timeout
+        setTimeout(() => {
+            updateDebugInfo();
+            
+            if ('serial' in navigator) {
+                addLog('✅ Web Serial API พร้อมใช้งาน');
+            } else {
+                addLog('❌ Web Serial API ไม่รองรับ - ใช้ Chrome/Edge เวอร์ชันใหม่');
+            }
+            
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                addLog('✅ Speech Recognition API พร้อมใช้งาน');
+            } else {
+                addLog('❌ Speech Recognition API ไม่รองรับ');
+            }
+            
+            // ตรวจสอบ Google APIs script
+            if (typeof gapi === 'undefined') {
+                addLog('⚠️ Google APIs script กำลังโหลด... กรุณารอสักครู่');
+                // ลองโหลดอีกครั้งหากยังไม่มี
+                setTimeout(() => {
+                    if (typeof gapi === 'undefined') {
+                        addLog('❌ Google APIs script โหลดไม่สำเร็จ - ตรวจสอบการเชื่อมต่อ');
+                        loadGoogleAPI().catch(err => {
+                            addLog('❌ ไม่สามารถโหลด Google API script ได้');
+                        });
+                    } else {
+                        addLog('✅ Google APIs script โหลดสำเร็จ');
+                        updateDebugInfo();
+                    }
+                }, 5000);
+            } else {
+                addLog('✅ Google APIs script พร้อมใช้งาน');
+            }
+        }, 2000);
+
+        // ฟังก์ชันสำหรับการโหลด Google API script เมื่อต้องการ
+        window.onGoogleAPILoad = function() {
+            addLog('✅ Google APIs script โหลดสำเร็จ (callback)');
+            updateDebugInfo();
+        };
+
+    </script>
+    
+    <script src="https://apis.google.com/js/api.js" 
+            async 
+            defer 
+            onload="if(typeof onGoogleAPILoad === 'function') onGoogleAPILoad();"
+            onerror="addLog('❌ Google APIs script โหลดไม่สำเร็จ - ตรวจสอบการเชื่อมต่อ'); updateDebugInfo();">
+    </script>
+</body>
+</html>
