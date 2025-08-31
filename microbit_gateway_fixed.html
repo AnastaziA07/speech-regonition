@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Assistant Mobile Gateway</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .robot-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .status {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .status.connected {
+            background: rgba(76, 175, 80, 0.3);
+        }
+        
+        .status.disconnected {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .status.connecting {
+            background: rgba(255, 152, 0, 0.3);
+        }
+        
+        .feature-list {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .feature-item:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            width: 40px;
+            text-align: center;
+        }
+        
+        .feature-text {
+            flex: 1;
+        }
+        
+        .feature-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .feature-desc {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .connect-btn:disabled {
+            background: linear-gradient(45deg, #9E9E9E, #757575);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .connect-btn.connecting {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+        }
+        
+        .emergency-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .emergency-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .debug-info {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+        }
+
+        .debug-info h4 {
+            margin-bottom: 10px;
+            color: #FFD54F;
+        }
+        
+        .log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .log-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9rem;
+        }
+        
+        .log-item:last-child {
+            border-bottom: none;
+        }
+        
+        .timestamp {
+            opacity: 0.7;
+            font-size: 0.8rem;
+        }
+
+        .error {
+            color: #FF6B6B;
+        }
+
+        .success {
+            color: #4ECDC4;
+        }
+
+        .warning {
+            color: #FFE66D;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="robot-icon">🤖</div>
+            <h1>Robot Assistant</h1>
+            <p>Mobile Gateway</p>
+        </div>
+        
+        <div class="status" id="connectionStatus">
+            <strong>สถานะ:</strong> <span id="statusText">รอการเชื่อมต่อ</span>
+        </div>
+        
+        <div class="feature-list">
+            <div class="feature-item">
+                <div class="feature-icon">📅</div>
+                <div class="feature-text">
+                    <div class="feature-title">Google Calendar Sync</div>
+                    <div class="feature-desc">ซิงค์กำหนดการอัตโนมัติ</div>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">🚨</div>
+                <div class="feature-text">
+                    <div class="feature-title">Emergency Call</div>
+                    <div class="feature-desc">โทรไปเบอร์ฉุกเฉิน 1669</div>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">📱</div>
+                <div class="feature-text">
+                    <div class="feature-title">Push Notifications</div>
+                    <div class="feature-desc">แจ้งเตือนผ่านมือถือ</div>
+                </div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-icon">👥</div>
+                <div class="feature-text">
+                    <div class="feature-title">Family Alert</div>
+                    <div class="feature-desc">แจ้งครอบครัวเมื่อมีปัญหา</div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="connect-btn" id="connectBtn" onclick="toggleConnection()">
+            เชื่อมต่อกับหุ่นยนต์
+        </button>
+        
+        <button class="emergency-btn" id="emergencyBtn" onclick="makeEmergencyCall()" disabled>
+            🚨 โทรฉุกเฉิน 1669
+        </button>
+
+        <div class="debug-info" id="debugInfo">
+            <h4>🔧 Debug Information</h4>
+            <div id="debugContent">
+                <p>Browser: <span id="browserInfo"></span></p>
+                <p>Bluetooth Support: <span id="bluetoothSupport"></span></p>
+                <p>HTTPS: <span id="httpsStatus"></span></p>
+            </div>
+        </div>
+        
+        <div class="log" id="activityLog">
+            <div class="log-item">
+                <span class="timestamp">10:30:15</span> - ระบบเริ่มทำงาน
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isConnected = false;
+        let bluetoothDevice = null;
+        let characteristic = null;
+        let isConnecting = false;
+        
+        // Service และ Characteristic UUIDs สำหรับ micro:bit
+        // ใช้ UART service ที่ถูกต้อง
+        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+        const UART_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // TX (write)
+        const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // RX (notify)
+        
+        // Initialize debug info
+        function initDebugInfo() {
+            const browserInfo = navigator.userAgent.split(')')[0].split('(')[1] || 'Unknown';
+            const bluetoothSupport = 'bluetooth' in navigator ? '✅ Supported' : '❌ Not Supported';
+            const httpsStatus = window.location.protocol === 'https:' ? '✅ Secure' : '❌ Insecure (Bluetooth requires HTTPS)';
+            
+            document.getElementById('browserInfo').textContent = browserInfo;
+            document.getElementById('bluetoothSupport').textContent = bluetoothSupport;
+            document.getElementById('httpsStatus').textContent = httpsStatus;
+            
+            if (!('bluetooth' in navigator)) {
+                addLog('❌ Browser ไม่รองรับ Web Bluetooth API', 'error');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('connectBtn').textContent = 'ไม่รองรับ Bluetooth';
+            } else if (window.location.protocol !== 'https:') {
+                addLog('⚠️ จำเป็นต้องใช้ HTTPS สำหรับ Bluetooth', 'warning');
+            }
+        }
+        
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const now = new Date();
+            const timestamp = now.toLocaleTimeString('th-TH');
+            
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${type}`;
+            logItem.innerHTML = `<span class="timestamp">${timestamp}</span> - ${message}`;
+            
+            log.insertBefore(logItem, log.firstChild);
+            
+            // เก็บแค่ 15 รายการล่าสุด
+            while (log.children.length > 15) {
+                log.removeChild(log.lastChild);
+            }
+            
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        async function toggleConnection() {
+            if (isConnecting) {
+                addLog('กรุณารอ... กำลังเชื่อมต่ออยู่', 'warning');
+                return;
+            }
+            
+            if (!isConnected) {
+                await connectToBluetooth();
+            } else {
+                disconnect();
+            }
+        }
+        
+        async function connectToBluetooth() {
+            if (isConnecting) return;
+            
+            try {
+                isConnecting = true;
+                const connectBtn = document.getElementById('connectBtn');
+                const statusDiv = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+                const emergencyBtn = document.getElementById('emergencyBtn');
+                
+                connectBtn.textContent = 'กำลังเชื่อมต่อ...';
+                connectBtn.className = 'connect-btn connecting';
+                connectBtn.disabled = true;
+                statusDiv.className = 'status connecting';
+                statusText.textContent = 'กำลังค้นหาอุปกรณ์';
+                
+                addLog('🔍 เริ่มค้นหาอุปกรณ์ micro:bit...', 'info');
+                
+                // ขอ permission สำหรับ Bluetooth
+                const options = {
+                    filters: [
+                        { namePrefix: 'BBC micro:bit' },
+                        { namePrefix: 'micro:bit' },
+                        { services: [UART_SERVICE_UUID] }
+                    ],
+                    optionalServices: [UART_SERVICE_UUID]
+                };
+                
+                addLog('📡 กำลังขอ permission...', 'info');
+                bluetoothDevice = await navigator.bluetooth.requestDevice(options);
+                
+                addLog(`✅ พบอุปกรณ์: ${bluetoothDevice.name || 'Unknown Device'}`, 'success');
+                
+                // Listen for disconnection
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                statusText.textContent = 'กำลังเชื่อมต่อกับอุปกรณ์';
+                addLog('🔌 กำลังเชื่อมต่อ GATT server...', 'info');
+                
+                const server = await bluetoothDevice.gatt.connect();
+                addLog('✅ เชื่อมต่อ GATT server สำเร็จ', 'success');
+                
+                statusText.textContent = 'กำลังเชื่อมต่อกับ UART service';
+                addLog('🔧 กำลังเข้าถึง UART service...', 'info');
+                
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                addLog('✅ พบ UART service', 'success');
+                
+                // Get RX characteristic for notifications
+                const rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+                
+                // Get TX characteristic for writing
+                characteristic = await service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
+                
+                addLog('✅ พบ characteristics', 'success');
+                
+                // ฟังข้อมูลจาก micro:bit
+                statusText.textContent = 'กำลังตั้งค่า notifications';
+                await rxCharacteristic.startNotifications();
+                rxCharacteristic.addEventListener('characteristicvaluechanged', handleRobotMessage);
+                
+                addLog('✅ ตั้งค่า notifications สำเร็จ', 'success');
+                
+                isConnected = true;
+                isConnecting = false;
+                
+                statusDiv.className = 'status connected';
+                statusText.textContent = 'เชื่อมต่อแล้ว';
+                connectBtn.textContent = 'ตัดการเชื่อมต่อ';
+                connectBtn.className = 'connect-btn';
+                connectBtn.disabled = false;
+                emergencyBtn.disabled = false;
+                
+                addLog('🎉 เชื่อมต่อกับหุ่นยนต์สำเร็จ!', 'success');
+                
+                // ส่งคำสั่งทดสอบ
+                setTimeout(() => {
+                    sendToRobot('MOBILE_CONNECTED', 'Gateway Ready');
+                    addLog('📤 ส่งสัญญาณทดสอบ', 'info');
+                }, 1000);
+                
+                // ขอ permission สำหรับ notifications
+                if ('Notification' in window && Notification.permission === 'default') {
+                    const permission = await Notification.requestPermission();
+                    addLog(`🔔 Notification permission: ${permission}`, 'info');
+                }
+                
+                // เริ่มการซิงค์ Google Calendar
+                initGoogleCalendarSync();
+                
+            } catch (error) {
+                isConnecting = false;
+                console.error('การเชื่อมต่อไม่สำเร็จ:', error);
+                
+                let errorMessage = 'เชื่อมต่อไม่สำเร็จ';
+                
+                if (error.name === 'NotFoundError') {
+                    errorMessage = 'ไม่พบอุปกรณ์ micro:bit ที่เข้ากันได้';
+                } else if (error.name === 'SecurityError') {
+                    errorMessage = 'จำเป็นต้องใช้ HTTPS สำหรับ Bluetooth';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage = 'Browser ไม่รองรับ Web Bluetooth';
+                } else if (error.name === 'NetworkError') {
+                    errorMessage = 'ไม่สามารถเชื่อมต่อกับอุปกรณ์ได้';
+                } else if (error.message.includes('User cancelled')) {
+                    errorMessage = 'ผู้ใช้ยกเลิกการเชื่อมต่อ';
+                }
+                
+                addLog(`❌ ${errorMessage}: ${error.message}`, 'error');
+                
+                const connectBtn = document.getElementById('connectBtn');
+                const statusDiv = document.getElementById('connectionStatus');
+                const statusText = document.getElementById('statusText');
+                
+                connectBtn.textContent = 'เชื่อมต่อกับหุ่นยนต์';
+                connectBtn.className = 'connect-btn';
+                connectBtn.disabled = false;
+                statusDiv.className = 'status disconnected';
+                statusText.textContent = 'เชื่อมต่อไม่สำเร็จ';
+            }
+        }
+        
+        function onDisconnected(event) {
+            addLog('⚠️ อุปกรณ์หลุดการเชื่อมต่อ', 'warning');
+            disconnect();
+        }
+        
+        function disconnect() {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+            }
+            
+            isConnected = false;
+            isConnecting = false;
+            bluetoothDevice = null;
+            characteristic = null;
+            
+            const statusDiv = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+            const emergencyBtn = document.getElementById('emergencyBtn');
+            
+            statusDiv.className = 'status disconnected';
+            statusText.textContent = 'ตัดการเชื่อมต่อแล้ว';
+            connectBtn.textContent = 'เชื่อมต่อกับหุ่นยนต์';
+            connectBtn.className = 'connect-btn';
+            connectBtn.disabled = false;
+            emergencyBtn.disabled = true;
+            
+            addLog('🔌 ตัดการเชื่อมต่อแล้ว', 'info');
+        }
+        
+        function handleRobotMessage(event) {
+            const value = new TextDecoder().decode(event.target.value);
+            console.log('ข้อความจากหุ่นยนต์:', value);
+            
+            const cleanValue = value.trim();
+            if (!cleanValue) return;
+            
+            addLog(`📥 รับข้อมูล: ${cleanValue}`, 'success');
+            
+            const parts = cleanValue.split(':');
+            const command = parts[0];
+            const data = parts.slice(1).join(':') || '';
+            
+            // ประมวลผลคำสั่งจากหุ่นยนต์
+            switch(command) {
+                case 'TILT_ALERT':
+                    handleTiltAlert(data);
+                    break;
+                case 'EMERGENCY':
+                case 'ADVANCED_EMERGENCY':
+                    makeEmergencyCall(data);
+                    break;
+                case 'CALENDAR_SYNC':
+                    syncCalendar();
+                    break;
+                case 'POMODORO':
+                    handlePomodoroUpdate(data);
+                    break;
+                case 'WALKING_ALERT':
+                    handleWalkingAlert(data);
+                    break;
+                case 'VOICE_DETECTED':
+                    handleVoiceDetection();
+                    break;
+                case 'REMINDER':
+                    showReminder(data);
+                    break;
+                case 'ACHIEVEMENT':
+                    celebrateAchievement(data);
+                    break;
+                case 'BEHAVIOR_DATA':
+                    updateUserStats(data);
+                    break;
+                case 'WEATHER_REQUEST':
+                    sendWeatherData();
+                    break;
+                case 'BATTERY_LEVEL':
+                    updateBatteryStatus(data);
+                    break;
+                case 'CRITICAL_BATTERY':
+                    handleCriticalBattery();
+                    break;
+                case 'DAILY_REPORT':
+                    processDailyReport(data);
+                    break;
+                case 'PING':
+                    sendToRobot('PONG', 'Mobile Gateway Online');
+                    break;
+                default:
+                    addLog(`📨 ข้อความ: ${cleanValue}`, 'info');
+            }
+        }
+        
+        function sendToRobot(command, data = '') {
+            if (!characteristic) {
+                addLog('❌ ไม่ได้เชื่อมต่อกับอุปกรณ์', 'error');
+                return false;
+            }
+            
+            try {
+                const message = `${command}:${data}\n`;
+                const encoder = new TextEncoder();
+                const encodedMessage = encoder.encode(message);
+                
+                // Check if message is too long (micro:bit UART typically has 20 byte limit per packet)
+                if (encodedMessage.length > 20) {
+                    addLog(`⚠️ ข้อความยาวเกินไป (${encodedMessage.length} bytes)`, 'warning');
+                    // Split into chunks if needed
+                    for (let i = 0; i < encodedMessage.length; i += 20) {
+                        const chunk = encodedMessage.slice(i, i + 20);
+                        characteristic.writeValue(chunk);
+                    }
+                } else {
+                    characteristic.writeValue(encodedMessage);
+                }
+                
+                addLog(`📤 ส่ง: ${command}:${data}`, 'info');
+                return true;
+            } catch (error) {
+                addLog(`❌ ส่งข้อมูลไม่สำเร็จ: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function handleTiltAlert(data) {
+            const coords = data.split(',');
+            sendNotification('🚨 แจ้งเตือนท่าทาง', `ตรวจพบท่าทางผิดปกติ (X:${coords[0]}, Y:${coords[1]})`);
+            sendLineNotify('⚠️ แจ้งเตือน: ตรวจพบการเดินเอียงผิดปกติ');
+            addLog('⚠️ แจ้งเตือนท่าทางผิดปกติ', 'warning');
+        }
+        
+        function handleWalkingAlert(data) {
+            sendNotification('👟 การเดิน', 'ตรวจพบการเดินไม่สม่ำเสมอ กรุณาระวัง');
+            sendLineNotify('👟 แจ้งเตือน: การเดินไม่สม่ำเสมอ');
+            addLog('⚠️ เตือนการเดินผิดปกติ', 'warning');
+        }
+        
+        function handlePomodoroUpdate(data) {
+            const parts = data.split(':');
+            const status = parts[0];
+            const time = parts[1];
+            
+            switch(status) {
+                case 'START':
+                    addLog(`⏰ เริ่ม Pomodoro (${Math.floor(parseInt(time)/60)} นาที)`, 'info');
+                    break;
+                case 'RUNNING':
+                    const remaining = Math.floor(parseInt(time)/60);
+                    addLog(`⏳ Pomodoro เหลือ ${remaining} นาที`, 'info');
+                    break;
+                case 'COMPLETED':
+                    sendNotification('✅ Pomodoro สำเร็จ!', 'ทำงานเสร็จแล้ว เวลาพักผ่อน');
+                    addLog('🎉 Pomodoro สำเร็จ!', 'success');
+                    break;
+                case 'BREAK_START':
+                    addLog('☕ เริ่มพักผ่อน', 'info');
+                    break;
+                case 'BREAK_END':
+                    sendNotification('💪 พร้อมทำงาน', 'พักผ่อนเสร็จแล้ว กลับไปทำงานกันเถอะ!');
+                    addLog('💪 จบการพักผ่อน', 'success');
+                    break;
+            }
+        }
+        
+        function handleVoiceDetection() {
+            addLog('🎤 ตรวจพบเสียงดัง', 'info');
+        }
+        
+        function showReminder(data) {
+            sendNotification('💡 คำแนะนำ', data);
+            addLog(`💡 แสดงคำแนะนำ: ${data}`, 'info');
+        }
+        
+        function celebrateAchievement(data) {
+            sendNotification('🏆 ความสำเร็จใหม่!', data);
+            addLog(`🏆 ความสำเร็จ: ${data}`, 'success');
+            // เพิ่มเอฟเฟค celebration
+            document.body.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4)';
+            setTimeout(() => {
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }, 3000);
+        }
+        
+        function updateUserStats(data) {
+            const stats = data.split(',');
+            addLog(`📊 สถิติ - Pomodoro: ${stats[0]}, Break: ${stats[1]}, คำเตือน: ${stats[2]}`, 'info');
+        }
+        
+        function sendWeatherData() {
+            // ใช้ Weather API (ตัวอย่าง)
+            fetch('https://api.openweathermap.org/data/2.5/weather?q=Bangkok&appid=YOUR_API_KEY')
+                .then(response => response.json())
+                .then(data => {
+                    const temp = Math.round(data.main.temp - 273.15);
+                    const humidity = data.main.humidity;
+                    const condition = data.weather[0].main.toLowerCase();
+                    
+                    const weatherData = `${temp},${humidity},${condition}`;
+                    sendToRobot('WEATHER_DATA', weatherData);
+                })
+                .catch(error => {
+                    console.error('Weather API error:', error);
+                    // ส่งข้อมูลจำลอง
+                    sendToRobot('WEATHER_DATA', '25,60,sunny');
+                });
+        }
+        
+        function updateBatteryStatus(level) {
+            const batteryPercent = parseInt(level);
+            addLog(`🔋 แบตเตอรี่: ${batteryPercent}%`, 'info');
+            
+            if (batteryPercent <= 20) {
+                sendNotification('🔋 แบตเตอรี่ต่ำ', `แบตเตอรี่เหลือ ${batteryPercent}%`);
+            }
+        }
+        
+        function handleCriticalBattery() {
+            sendNotification('🔋 แบตเตอรี่หมด!', 'หุ่นยนต์จะปิดเครื่องเร็วๆ นี้');
+            sendLineNotify('🔋 ฉุกเฉิน: แบตเตอรี่หุ่นยนต์หมดแล้ว!');
+            addLog('🔋 แบตเตอรี่ใกล้หมด - ต้องชาร์จด่วน!', 'error');
+        }
+        
+        function processDailyReport(data) {
+            try {
+                const report = JSON.parse(data);
+                addLog(`📊 รายงานประจำวัน - Pomodoro: ${report.totalPomodoroTime/60}min, คำเตือน: ${report.tiltWarningCount}`, 'info');
+                sendLineNotify(`📊 รายงานประจำวัน:\n- เวลาทำงาน: ${Math.floor(report.totalPomodoroTime/60)} นาที\n- จำนวนคำเตือน: ${report.tiltWarningCount}`);
+            } catch (error) {
+                addLog('📊 ได้รับรายงานประจำวัน', 'info');
+            }
+        }
+        
+        async function makeEmergencyCall() {
+            try {
+                // สำหรับ Android: ใช้ intent
+                if (/Android/i.test(navigator.userAgent)) {
+                    window.location.href = 'tel:1669';
+                } else {
+                    // สำหรับ iOS หรือ browser อื่นๆ
+                    window.open('tel:1669', '_self');
+                }
+                
+                // แจ้งเตือนครอบครัว
+                sendNotification('🚨 การโทรฉุกเฉิน', 'กำลังโทรไปเบอร์ฉุกเฉิน 1669');
+                sendLineNotify('🚨 ฉุกเฉิน: กำลังโทรไปเบอร์ 1669');
+                
+                addLog('📞 โทรไปเบอร์ฉุกเฉิน 1669', 'warning');
+                
+            } catch (error) {
+                console.error('ไม่สามารถโทรได้:', error);
+                addLog('❌ ไม่สามารถโทรได้: ' + error.message, 'error');
+            }
+        }
+        
+        function sendNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const notification = new Notification(title, {
+                    body: body,
+                    icon: '🤖',
+                    vibrate: [200, 100, 200],
+                    tag: 'robot-assistant'
+                });
+                
+                // Auto close after 5 seconds
+                setTimeout(() => notification.close(), 5000);
+            } else if ('Notification' in window && Notification.permission === 'default') {
+                addLog('🔔 กรุณาอนุญาต notifications', 'warning');
+            }
+        }
+        
+        function sendLineNotify(message) {
+            // ตัวอย่างการใช้ LINE Notify - ต้องแทนที่ด้วย token จริง
+            const LINE_TOKEN = 'YOUR_LINE_NOTIFY_TOKEN_HERE';
+            
+            if (LINE_TOKEN === 'YOUR_LINE_NOTIFY_TOKEN_HERE') {
+                addLog('⚠️ ยังไม่ได้ตั้งค่า LINE Notify token', 'warning');
+                return;
+            }
+            
+            fetch('https://notify-api.line.me/api/notify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Authorization': `Bearer ${LINE_TOKEN}`
+                },
+                body: `message=${encodeURIComponent(message)}`
+            })
+            .then(response => {
+                if (response.ok) {
+                    addLog('✅ ส่ง LINE Notify สำเร็จ', 'success');
+                } else {
+                    addLog('❌ ส่ง LINE Notify ไม่สำเร็จ', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('LINE Notify error:', error);
+                addLog('❌ ส่ง LINE Notify ไม่สำเร็จ: ' + error.message, 'error');
+            });
+        }
+        
+        function initGoogleCalendarSync() {
+            // Google Calendar API integration
+            addLog('📅 เริ่มการซิงค์ Google Calendar', 'info');
+            
+            // สำหรับ demo - ในการใช้งานจริงต้องใช้ Google Calendar API
+            setTimeout(() => {
+                addLog('✅ ซิงค์ Google Calendar สำเร็จ', 'success');
+            }, 2000);
+        }
+        
+        function syncCalendar() {
+            // ซิงค์กำหนดการ
+            addLog('🔄 กำลังซิงค์กำหนดการใหม่...', 'info');
+            
+            setTimeout(() => {
+                addLog('✅ ซิงค์กำหนดการเสร็จสิ้น', 'success');
+            }, 1500);
+        }
+        
+        // Test functions for debugging
+        function testConnection() {
+            if (isConnected && characteristic) {
+                sendToRobot('TEST', 'Mobile test message');
+                addLog('🧪 ส่งข้อความทดสอบ', 'info');
+            } else {
+                addLog('❌ ไม่ได้เชื่อมต่อ', 'error');
+            }
+        }
+        
+        // Add test button (hidden by default)
+        function addTestButton() {
+            if (window.location.hash === '#debug') {
+                const testBtn = document.createElement('button');
+                testBtn.textContent = '🧪 ทดสอบการเชื่อมต่อ';
+                testBtn.className = 'connect-btn';
+                testBtn.style.marginTop = '10px';
+                testBtn.style.background = 'linear-gradient(45deg, #9C27B0, #673AB7)';
+                testBtn.onclick = testConnection;
+                
+                document.querySelector('.container').appendChild(testBtn);
+                addLog('🔧 โหมด Debug เปิดใช้งาน', 'info');
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initDebugInfo();
+            addTestButton();
+            
+            // Request notification permission on page load
+            if ('Notification' in window && Notification.permission === 'default') {
+                setTimeout(() => {
+                    Notification.requestPermission().then(permission => {
+                        addLog(`🔔 Notification permission: ${permission}`, 'info');
+                    });
+                }, 2000);
+            }
+            
+            addLog('🚀 ระบบพร้อมใช้งาน', 'success');
+        });
+        
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && isConnected) {
+                addLog('📱 แอปทำงานในเบื้องหลัง', 'info');
+            } else if (!document.hidden && isConnected) {
+                addLog('📱 กลับเข้าแอป', 'info');
+                // Send ping to check connection
+                setTimeout(() => {
+                    sendToRobot('PING', 'Mobile back online');
+                }, 500);
+            }
+        });
+        
+        // Handle before unload
+        window.addEventListener('beforeunload', function() {
+            if (isConnected) {
+                sendToRobot('MOBILE_DISCONNECT', 'Gateway closing');
+                disconnect();
+            }
+        });
+        
+        // Add keyboard shortcuts for debugging
+        document.addEventListener('keydown', function(event) {
+            if (event.altKey && event.key === 't') {
+                testConnection();
+            } else if (event.altKey && event.key === 'd') {
+                const debugInfo = document.getElementById('debugInfo');
+                debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+        
+    </script>
+</body>
+</html>
